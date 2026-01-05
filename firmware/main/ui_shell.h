@@ -3,6 +3,7 @@
 #include "esp_err.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,7 @@ void ui_shell_update_weather(const char *text);
 void ui_shell_show_onboarding(const char *primary, const char *secondary);
 void ui_shell_set_brightness_state(ui_brightness_state_t state);
 void ui_shell_update_power_quick_toggles(bool auto_dim_enabled, bool deep_sleep_enabled);
+void ui_shell_update_boot_status(const char *module_name, uint8_t percent);
 
 #ifdef __cplusplus
 }
