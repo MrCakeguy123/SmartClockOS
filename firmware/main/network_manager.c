@@ -55,8 +55,11 @@ esp_err_t network_manager_init(const network_manager_config_t *config)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    ESP_ERROR_CHECK(esp_netif_create_default_wifi_sta());
-    ESP_ERROR_CHECK(esp_netif_create_default_wifi_ap());
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();
+
+    (void)sta_netif;
+    (void)ap_netif;
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
