@@ -94,6 +94,16 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    ui_shell_config_t ui_cfg = {
+        .weather_request_cb = on_weather_requested,
+        .weather_request_ctx = NULL,
+        .settings_toggle_cb = on_settings_toggle,
+        .settings_toggle_ctx = NULL,
+    };
+
+    ESP_ERROR_CHECK(ui_shell_init(&ui_cfg));
+    ui_shell_update_boot_status("display", 10);
+
     time_service_config_t time_cfg = {
         .server = "pool.ntp.org",
         .sync_cb = on_time_synced,
@@ -105,16 +115,11 @@ void app_main(void)
         .cb_ctx = NULL,
     };
 
-    ui_shell_config_t ui_cfg = {
-        .weather_request_cb = on_weather_requested,
-        .weather_request_ctx = NULL,
-        .settings_toggle_cb = on_settings_toggle,
-        .settings_toggle_ctx = NULL,
-    };
-
+    ui_shell_update_boot_status("time service", 25);
     ESP_ERROR_CHECK(time_service_init(&time_cfg));
+
+    ui_shell_update_boot_status("weather service", 45);
     ESP_ERROR_CHECK(weather_service_init(&weather_cfg));
-    ESP_ERROR_CHECK(ui_shell_init(&ui_cfg));
 
     power_manager_config_t power_cfg = {
         .dim_timeout_ms = 30000,
@@ -127,6 +132,7 @@ void app_main(void)
         .display_cb = on_display_power_state,
         .cb_ctx = NULL,
     };
+    ui_shell_update_boot_status("power manager", 65);
     ESP_ERROR_CHECK(power_manager_init(&power_cfg));
     ui_shell_update_power_quick_toggles(power_manager_is_auto_dim_enabled(), power_manager_is_deep_sleep_enabled());
 
@@ -134,6 +140,9 @@ void app_main(void)
         .state_cb = on_network_event,
         .cb_ctx = NULL,
     };
+    ui_shell_update_boot_status("provisioning", 80);
     ESP_ERROR_CHECK(provisioning_manager_init(&prov_cfg));
+
+    ui_shell_update_boot_status("ready", 100);
 }
 

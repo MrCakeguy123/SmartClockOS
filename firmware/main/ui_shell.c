@@ -5,12 +5,17 @@
 #include "freertos/task.h"
 #include "lvgl.h"
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
 
 static const char *TAG = "ui_shell";
 
 typedef struct {
+    lv_obj_t *loading_title;
+    lv_obj_t *loading_status;
+    lv_obj_t *loading_bar;
     lv_obj_t *time_label;
     lv_obj_t *sub_label;
     lv_obj_t *weather_label;
@@ -23,6 +28,7 @@ typedef struct {
     lv_obj_t *deep_sleep_switch;
     bool updating_toggles;
     int weather_ticks;
+    bool clock_ready;
     ui_shell_config_t config;
 } ui_shell_ctx_t;
 
@@ -188,8 +194,55 @@ static void ui_shell_create_settings_panel(ui_shell_ctx_t *ctx)
     ctx->updating_toggles = false;
 }
 
+static void ui_shell_create_loading_ui(ui_shell_ctx_t *ctx)
+{
+    lv_obj_t *screen = lv_scr_act();
+
+    // Background gradient
+    static lv_style_t bg_style;
+    lv_style_init(&bg_style);
+    lv_style_set_bg_color(&bg_style, lv_color_hex(0x102030));
+    lv_style_set_bg_grad_color(&bg_style, lv_color_hex(0x203040));
+    lv_style_set_bg_grad_dir(&bg_style, LV_GRAD_DIR_VER);
+    lv_obj_add_style(screen, &bg_style, 0);
+
+    lv_obj_t *title = lv_label_create(screen);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_34, 0);
+    lv_label_set_text(title, "SmartClock OS");
+    lv_obj_align(title, LV_ALIGN_CENTER, 0, -20);
+
+    lv_obj_t *status = lv_label_create(screen);
+    lv_obj_set_style_text_font(status, &lv_font_montserrat_18, 0);
+    lv_label_set_text(status, "Loading...");
+    lv_obj_align(status, LV_ALIGN_CENTER, 0, 12);
+
+    lv_obj_t *bar = lv_bar_create(screen);
+    lv_obj_set_size(bar, 200, 10);
+    lv_bar_set_range(bar, 0, 100);
+    lv_bar_set_value(bar, 0, LV_ANIM_OFF);
+    lv_obj_align(bar, LV_ALIGN_CENTER, 0, 40);
+
+    ctx->loading_title = title;
+    ctx->loading_status = status;
+    ctx->loading_bar = bar;
+    ctx->clock_ready = false;
+}
+
 static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
 {
+    if (ctx->loading_title) {
+        lv_obj_del(ctx->loading_title);
+        ctx->loading_title = NULL;
+    }
+    if (ctx->loading_status) {
+        lv_obj_del(ctx->loading_status);
+        ctx->loading_status = NULL;
+    }
+    if (ctx->loading_bar) {
+        lv_obj_del(ctx->loading_bar);
+        ctx->loading_bar = NULL;
+    }
+
     lv_obj_t *screen = lv_scr_act();
 
     // Background gradient
@@ -268,6 +321,7 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     ctx->status_subtitle = status_subtitle;
     ctx->brightness_overlay = overlay;
     ctx->weather_ticks = 300; // force immediate first refresh
+    ctx->clock_ready = true;
 
     ui_shell_apply_brightness(ctx, UI_BRIGHTNESS_ACTIVE);
 
@@ -287,10 +341,33 @@ esp_err_t ui_shell_init(const ui_shell_config_t *config)
     xTaskCreate(ui_shell_lvgl_tick, "lv_tick", 2048, NULL, 5, NULL);
     xTaskCreate(ui_shell_lvgl_loop, "lv_loop", 4096, NULL, 5, NULL);
 
-    ui_shell_create_clock_ui(&s_ctx);
+    ui_shell_create_loading_ui(&s_ctx);
 
     ESP_LOGI(TAG, "UI shell initialized");
     return ESP_OK;
+}
+
+void ui_shell_update_boot_status(const char *module_name, uint8_t percent)
+{
+    if (!s_ctx.loading_status || !s_ctx.loading_bar) {
+        return;
+    }
+
+    char status_text[64];
+    if (module_name && module_name[0] != '\0') {
+        snprintf(status_text, sizeof(status_text), "Loading %s", module_name);
+    } else {
+        strncpy(status_text, "Loading...", sizeof(status_text));
+        status_text[sizeof(status_text) - 1] = '\0';
+    }
+
+    lv_label_set_text(s_ctx.loading_status, status_text);
+    lv_bar_set_value(s_ctx.loading_bar, percent, LV_ANIM_OFF);
+
+    if (percent >= 100 && !s_ctx.clock_ready) {
+        s_ctx.clock_ready = true;
+        ui_shell_create_clock_ui(&s_ctx);
+    }
 }
 
 void ui_shell_update_weather(const char *text)
