@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct weather_data_t {
     double temp_f;       // Current temperature in Fahrenheit
     double feels_like_f; // Apparent temperature
     double high_f;       // Today's high
