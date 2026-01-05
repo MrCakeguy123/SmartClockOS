@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
+#include <stdbool.h>
 #include <string.h>
 #include <time.h>
 
@@ -16,6 +17,11 @@ typedef struct {
     lv_obj_t *status_box;
     lv_obj_t *status_title;
     lv_obj_t *status_subtitle;
+    lv_obj_t *brightness_overlay;
+    lv_obj_t *settings_panel;
+    lv_obj_t *auto_dim_switch;
+    lv_obj_t *deep_sleep_switch;
+    bool updating_toggles;
     int weather_ticks;
     ui_shell_config_t config;
 } ui_shell_ctx_t;
@@ -42,6 +48,41 @@ static void ui_shell_lvgl_loop(void *arg)
     }
 }
 
+static void ui_shell_apply_brightness(ui_shell_ctx_t *ctx, ui_brightness_state_t state)
+{
+    if (!ctx->brightness_overlay) {
+        return;
+    }
+
+    lv_opa_t overlay_opa = LV_OPA_TRANSP;
+    lv_opa_t text_opa = LV_OPA_COVER;
+
+    switch (state) {
+        case UI_BRIGHTNESS_ACTIVE:
+            overlay_opa = LV_OPA_TRANSP;
+            text_opa = LV_OPA_COVER;
+            break;
+        case UI_BRIGHTNESS_DIMMED:
+            overlay_opa = LV_OPA_50;
+            text_opa = LV_OPA_80;
+            break;
+        case UI_BRIGHTNESS_OFF:
+            overlay_opa = LV_OPA_80;
+            text_opa = LV_OPA_60;
+            break;
+        default:
+            break;
+    }
+
+    lv_obj_set_style_bg_opa(ctx->brightness_overlay, overlay_opa, 0);
+
+    lv_obj_set_style_text_opa(ctx->time_label, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->sub_label, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->weather_label, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->status_title, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->status_subtitle, text_opa, 0);
+}
+
 static void ui_shell_update_clock(lv_timer_t *timer)
 {
     ui_shell_ctx_t *ctx = (ui_shell_ctx_t *)timer->user_data;
@@ -64,6 +105,87 @@ static void ui_shell_update_clock(lv_timer_t *timer)
         ctx->config.weather_request_cb(ctx->config.weather_request_ctx);
         ctx->weather_ticks = 0;
     }
+}
+
+static void settings_switch_handler(lv_event_t *e)
+{
+    ui_shell_ctx_t *ctx = (ui_shell_ctx_t *)lv_event_get_user_data(e);
+    if (!ctx || ctx->updating_toggles) {
+        return;
+    }
+
+    lv_obj_t *target = lv_event_get_target(e);
+    const char *id = NULL;
+
+    if (target == ctx->auto_dim_switch) {
+        id = "auto_dim";
+    } else if (target == ctx->deep_sleep_switch) {
+        id = "deep_sleep";
+    }
+
+    if (!id) {
+        return;
+    }
+
+    bool enabled = lv_obj_has_state(target, LV_STATE_CHECKED);
+    if (ctx->config.settings_toggle_cb) {
+        ctx->config.settings_toggle_cb(id, enabled, ctx->config.settings_toggle_ctx);
+    }
+}
+
+static void ui_shell_create_settings_panel(ui_shell_ctx_t *ctx)
+{
+    lv_obj_t *panel = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(panel, 230, 120);
+    lv_obj_align(panel, LV_ALIGN_BOTTOM_RIGHT, -8, -8);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(0x192532), 0);
+    lv_obj_set_style_bg_opa(panel, LV_OPA_90, 0);
+    lv_obj_set_style_radius(panel, 8, 0);
+    lv_obj_set_style_border_width(panel, 0, 0);
+    lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(panel, 8, 0);
+    lv_obj_set_style_pad_row(panel, 6, 0);
+
+    lv_obj_t *title = lv_label_create(panel);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
+    lv_label_set_text(title, "Settings");
+
+    lv_obj_t *row_dim = lv_obj_create(panel);
+    lv_obj_set_style_bg_opa(row_dim, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(row_dim, 0, 0);
+    lv_obj_set_style_pad_all(row_dim, 0, 0);
+    lv_obj_set_flex_flow(row_dim, LV_FLEX_FLOW_ROW);
+    lv_obj_set_width(row_dim, lv_pct(100));
+    lv_obj_set_style_pad_column(row_dim, 8, 0);
+
+    lv_obj_t *dim_label = lv_label_create(row_dim);
+    lv_obj_set_style_text_font(dim_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(dim_label, "Auto dim");
+
+    lv_obj_t *dim_switch = lv_switch_create(row_dim);
+    lv_obj_add_state(dim_switch, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(dim_switch, settings_switch_handler, LV_EVENT_VALUE_CHANGED, ctx);
+
+    lv_obj_t *row_sleep = lv_obj_create(panel);
+    lv_obj_set_style_bg_opa(row_sleep, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(row_sleep, 0, 0);
+    lv_obj_set_style_pad_all(row_sleep, 0, 0);
+    lv_obj_set_flex_flow(row_sleep, LV_FLEX_FLOW_ROW);
+    lv_obj_set_width(row_sleep, lv_pct(100));
+    lv_obj_set_style_pad_column(row_sleep, 8, 0);
+
+    lv_obj_t *sleep_label = lv_label_create(row_sleep);
+    lv_obj_set_style_text_font(sleep_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(sleep_label, "Deep sleep");
+
+    lv_obj_t *sleep_switch = lv_switch_create(row_sleep);
+    lv_obj_add_state(sleep_switch, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(sleep_switch, settings_switch_handler, LV_EVENT_VALUE_CHANGED, ctx);
+
+    ctx->settings_panel = panel;
+    ctx->auto_dim_switch = dim_switch;
+    ctx->deep_sleep_switch = sleep_switch;
+    ctx->updating_toggles = false;
 }
 
 static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
@@ -128,13 +250,26 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     lv_label_set_text(status_subtitle, "Preparing network");
     lv_obj_align(status_subtitle, LV_ALIGN_BOTTOM_MID, 0, -6);
 
+    lv_obj_t *overlay = lv_obj_create(screen);
+    lv_obj_set_size(overlay, LV_HOR_RES, LV_VER_RES);
+    lv_obj_set_style_bg_color(overlay, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(overlay, LV_OPA_TRANSP, 0);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(overlay, LV_OBJ_FLAG_EVENT_BUBBLE);
+    lv_obj_clear_flag(overlay, LV_OBJ_FLAG_CLICKABLE);
+
+    ui_shell_create_settings_panel(ctx);
+
     ctx->time_label = time_label;
     ctx->sub_label = sub_label;
     ctx->weather_label = weather_label;
     ctx->status_box = status_box;
     ctx->status_title = status_title;
     ctx->status_subtitle = status_subtitle;
+    ctx->brightness_overlay = overlay;
     ctx->weather_ticks = 300; // force immediate first refresh
+
+    ui_shell_apply_brightness(ctx, UI_BRIGHTNESS_ACTIVE);
 
     lv_timer_create(ui_shell_update_clock, 1000, ctx);
 }
@@ -179,5 +314,33 @@ void ui_shell_show_onboarding(const char *primary, const char *secondary)
     if (secondary) {
         lv_label_set_text(s_ctx.status_subtitle, secondary);
     }
+}
+
+void ui_shell_set_brightness_state(ui_brightness_state_t state)
+{
+    ui_shell_apply_brightness(&s_ctx, state);
+}
+
+void ui_shell_update_power_quick_toggles(bool auto_dim_enabled, bool deep_sleep_enabled)
+{
+    if (!s_ctx.auto_dim_switch || !s_ctx.deep_sleep_switch) {
+        return;
+    }
+
+    s_ctx.updating_toggles = true;
+
+    if (auto_dim_enabled) {
+        lv_obj_add_state(s_ctx.auto_dim_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(s_ctx.auto_dim_switch, LV_STATE_CHECKED);
+    }
+
+    if (deep_sleep_enabled) {
+        lv_obj_add_state(s_ctx.deep_sleep_switch, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(s_ctx.deep_sleep_switch, LV_STATE_CHECKED);
+    }
+
+    s_ctx.updating_toggles = false;
 }
 
