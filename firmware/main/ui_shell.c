@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
+#include "lvgl_port.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -451,7 +452,7 @@ esp_err_t ui_shell_init(const ui_shell_config_t *config)
 
     s_ctx.config = *config;
 
-    lv_init();
+    ESP_ERROR_CHECK(lvgl_port_init());
 
     xTaskCreate(ui_shell_lvgl_tick, "lv_tick", 2048, NULL, 5, NULL);
     xTaskCreate(ui_shell_lvgl_loop, "lv_loop", 4096, NULL, 5, NULL);

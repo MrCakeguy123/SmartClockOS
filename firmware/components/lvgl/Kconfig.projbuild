@@ -1,0 +1,52 @@
+menu "LVGL configuration"
+
+config LVGL_DISPLAY_H_RES
+    int "Display horizontal resolution"
+    default 480
+
+config LVGL_DISPLAY_V_RES
+    int "Display vertical resolution"
+    default 320
+
+config LVGL_COLOR_DEPTH_16
+    bool "Enable RGB565 color depth"
+    default y
+
+config LVGL_DISPLAY_SPI_HOST
+    int "SPI host for ST7796"
+    default 2
+
+config LVGL_DISPLAY_SPI_MOSI
+    int "SPI MOSI GPIO"
+    default 23
+
+config LVGL_DISPLAY_SPI_SCK
+    int "SPI SCK GPIO"
+    default 18
+
+config LVGL_DISPLAY_SPI_CS
+    int "SPI CS GPIO"
+    default 5
+
+config LVGL_DISPLAY_DC
+    int "Display D/C GPIO"
+    default 21
+
+config LVGL_DISPLAY_RST
+    int "Display reset GPIO"
+    default 22
+
+config LVGL_DISPLAY_BL
+    int "Backlight GPIO"
+    default 27
+
+config LVGL_TOUCH_I2C_SDA
+    int "Touch I2C SDA GPIO"
+    default 21
+
+config LVGL_TOUCH_I2C_SCL
+    int "Touch I2C SCL GPIO"
+    default 22
+
+endmenu
+
