@@ -1,4 +1,5 @@
 #include "ui_shell.h"
+#include "config.h"
 
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -10,8 +11,54 @@
 #include <string.h>
 #include <time.h>
 #include "version.h"
+#include "weather_service.h"
 
 static const char *TAG = "ui_shell";
+
+// Get weather icon symbol based on weather code
+// Uses Unicode weather symbols that work with standard fonts
+static const char *get_weather_icon(int code)
+{
+    switch (code) {
+    case 0:
+        return "\xE2\x98\x80"; // ☀ Sun
+    case 1:
+    case 2:
+        return "\xE2\x9B\x85"; // ⛅ Partly cloudy
+    case 3:
+        return "\xE2\x98\x81"; // ☁ Cloud
+    case 45:
+    case 48:
+        return "\xF0\x9F\x8C\xAB"; // 🌫 Fog
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+    case 80:
+    case 81:
+    case 82:
+        return "\xE2\x98\x94"; // ☔ Rain
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+    case 85:
+    case 86:
+        return "\xE2\x9D\x84"; // ❄ Snow
+    case 95:
+    case 96:
+    case 99:
+        return "\xE2\x9A\xA1"; // ⚡ Thunderstorm
+    default:
+        return "?";
+    }
+}
 
 typedef struct {
     lv_obj_t *loading_title;
@@ -20,6 +67,9 @@ typedef struct {
     lv_obj_t *time_label;
     lv_obj_t *sub_label;
     lv_obj_t *weather_label;
+    lv_obj_t *weather_icon_label;
+    lv_obj_t *weather_details_label;
+    lv_obj_t *sun_label;
     lv_obj_t *brand_label;
     lv_obj_t *version_label;
     lv_obj_t *status_box;
@@ -88,6 +138,15 @@ static void ui_shell_apply_brightness(ui_shell_ctx_t *ctx, ui_brightness_state_t
     lv_obj_set_style_text_opa(ctx->time_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->sub_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->weather_label, text_opa, 0);
+    if (ctx->weather_icon_label) {
+        lv_obj_set_style_text_opa(ctx->weather_icon_label, text_opa, 0);
+    }
+    if (ctx->weather_details_label) {
+        lv_obj_set_style_text_opa(ctx->weather_details_label, text_opa, 0);
+    }
+    if (ctx->sun_label) {
+        lv_obj_set_style_text_opa(ctx->sun_label, text_opa, 0);
+    }
     lv_obj_set_style_text_opa(ctx->brand_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->version_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->status_title, text_opa, 0);
@@ -108,7 +167,7 @@ static void ui_shell_update_clock(lv_timer_t *timer)
 
     char sub_buf[32];
     strftime(sub_buf, sizeof(sub_buf), "%a", &info);
-    strlcat(sub_buf, " • Paris", sizeof(sub_buf));
+    strlcat(sub_buf, " • " LOCATION_NAME, sizeof(sub_buf));
     lv_label_set_text(ctx->sub_label, sub_buf);
 
     ctx->weather_ticks++;
@@ -292,13 +351,46 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     lv_obj_t *sub_label = lv_label_create(screen);
     lv_obj_set_style_text_font(sub_label, &lv_font_montserrat_18, 0);
     lv_label_set_text(sub_label, "-- • --");
-    lv_obj_align(sub_label, LV_ALIGN_BOTTOM_MID, 0, -32);
+    lv_obj_align(sub_label, LV_ALIGN_CENTER, 0, 50);
 
-    // Weather label
-    lv_obj_t *weather_label = lv_label_create(screen);
-    lv_obj_set_style_text_font(weather_label, &lv_font_montserrat_22, 0);
-    lv_label_set_text(weather_label, "--°C • --");
-    lv_obj_align(weather_label, LV_ALIGN_BOTTOM_MID, 0, -4);
+    // Weather card (bottom of screen)
+    lv_obj_t *weather_card = lv_obj_create(screen);
+    lv_obj_set_size(weather_card, 450, 95);
+    lv_obj_align(weather_card, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_style_bg_color(weather_card, lv_color_hex(0x152238), 0);
+    lv_obj_set_style_border_color(weather_card, lv_color_hex(0x2a4060), 0);
+    lv_obj_set_style_border_width(weather_card, 1, 0);
+    lv_obj_set_style_radius(weather_card, 12, 0);
+    lv_obj_clear_flag(weather_card, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(weather_card, 10, 0);
+
+    // Weather icon (left side)
+    lv_obj_t *weather_icon_label = lv_label_create(weather_card);
+    lv_obj_set_style_text_font(weather_icon_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(weather_icon_label, lv_color_hex(0xffcc00), 0);
+    lv_label_set_text(weather_icon_label, "...");
+    lv_obj_align(weather_icon_label, LV_ALIGN_LEFT_MID, 5, 0);
+
+    // Main weather label (temperature + condition)
+    lv_obj_t *weather_label = lv_label_create(weather_card);
+    lv_obj_set_style_text_font(weather_label, &lv_font_montserrat_26, 0);
+    lv_obj_set_style_text_color(weather_label, lv_color_white(), 0);
+    lv_label_set_text(weather_label, "Loading...");
+    lv_obj_align(weather_label, LV_ALIGN_LEFT_MID, 50, -12);
+
+    // Weather details (high/low/feels like)
+    lv_obj_t *weather_details_label = lv_label_create(weather_card);
+    lv_obj_set_style_text_font(weather_details_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(weather_details_label, lv_color_hex(0x7eb8da), 0);
+    lv_label_set_text(weather_details_label, "");
+    lv_obj_align(weather_details_label, LV_ALIGN_LEFT_MID, 50, 15);
+
+    // Sunrise/Sunset (right side)
+    lv_obj_t *sun_label = lv_label_create(weather_card);
+    lv_obj_set_style_text_font(sun_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(sun_label, lv_color_hex(0xffcc00), 0);
+    lv_label_set_text(sun_label, "");
+    lv_obj_align(sun_label, LV_ALIGN_RIGHT_MID, -10, 0);
 
     // Status panel for onboarding/provisioning
     lv_obj_t *status_box = lv_obj_create(screen);
@@ -334,6 +426,9 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     ctx->time_label = time_label;
     ctx->sub_label = sub_label;
     ctx->weather_label = weather_label;
+    ctx->weather_icon_label = weather_icon_label;
+    ctx->weather_details_label = weather_details_label;
+    ctx->sun_label = sun_label;
     ctx->brand_label = brand_label;
     ctx->version_label = version_label;
     ctx->status_box = status_box;
@@ -396,6 +491,40 @@ void ui_shell_update_weather(const char *text)
         return;
     }
     lv_label_set_text(s_ctx.weather_label, text);
+}
+
+void ui_shell_update_weather_data(const weather_data_t *data)
+{
+    if (!data) {
+        return;
+    }
+
+    // Update main weather label (temp + condition)
+    if (s_ctx.weather_label) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%.0f\xC2\xB0F • %s", data->temp_f, data->condition);
+        lv_label_set_text(s_ctx.weather_label, buf);
+    }
+
+    // Update weather icon
+    if (s_ctx.weather_icon_label) {
+        lv_label_set_text(s_ctx.weather_icon_label, get_weather_icon(data->weather_code));
+    }
+
+    // Update weather details (high/low/feels like)
+    if (s_ctx.weather_details_label) {
+        char details[64];
+        snprintf(details, sizeof(details), "H:%.0f\xC2\xB0 L:%.0f\xC2\xB0 • Feels %.0f\xC2\xB0",
+                 data->high_f, data->low_f, data->feels_like_f);
+        lv_label_set_text(s_ctx.weather_details_label, details);
+    }
+
+    // Update sunrise/sunset
+    if (s_ctx.sun_label) {
+        char sun[64];
+        snprintf(sun, sizeof(sun), "Rise: %s\nSet: %s", data->sunrise, data->sunset);
+        lv_label_set_text(s_ctx.sun_label, sun);
+    }
 }
 
 void ui_shell_show_onboarding(const char *primary, const char *secondary)

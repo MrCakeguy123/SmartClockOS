@@ -33,7 +33,7 @@ static void on_weather_updated(const weather_data_t *data, void *ctx)
 {
     (void)ctx;
     if (data) {
-        ui_shell_update_weather(data->description);
+        ui_shell_update_weather_data(data);
     }
 }
 
