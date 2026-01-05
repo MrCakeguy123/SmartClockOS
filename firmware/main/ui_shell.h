@@ -16,6 +16,7 @@ typedef struct {
 
 esp_err_t ui_shell_init(const ui_shell_config_t *config);
 void ui_shell_update_weather(const char *text);
+void ui_shell_show_onboarding(const char *primary, const char *secondary);
 
 #ifdef __cplusplus
 }
