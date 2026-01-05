@@ -3,7 +3,7 @@
 #include "esp_netif.h"
 #include "nvs_flash.h"
 
-#include "network_manager.h"
+#include "provisioning_manager.h"
 #include "time_service.h"
 #include "ui_shell.h"
 #include "weather_service.h"
@@ -58,13 +58,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    network_manager_config_t net_cfg = {
-        .ssid = "<your-ssid>",
-        .password = "<your-password>",
-        .state_cb = on_network_event,
-        .cb_ctx = NULL,
-    };
-
     time_service_config_t time_cfg = {
         .server = "pool.ntp.org",
         .sync_cb = on_time_synced,
@@ -81,9 +74,14 @@ void app_main(void)
         .weather_request_ctx = NULL,
     };
 
-    ESP_ERROR_CHECK(network_manager_init(&net_cfg));
     ESP_ERROR_CHECK(time_service_init(&time_cfg));
     ESP_ERROR_CHECK(weather_service_init(&weather_cfg));
     ESP_ERROR_CHECK(ui_shell_init(&ui_cfg));
+
+    provisioning_manager_config_t prov_cfg = {
+        .state_cb = on_network_event,
+        .cb_ctx = NULL,
+    };
+    ESP_ERROR_CHECK(provisioning_manager_init(&prov_cfg));
 }
 

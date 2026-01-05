@@ -13,6 +13,9 @@ typedef struct {
     lv_obj_t *time_label;
     lv_obj_t *sub_label;
     lv_obj_t *weather_label;
+    lv_obj_t *status_box;
+    lv_obj_t *status_title;
+    lv_obj_t *status_subtitle;
     int weather_ticks;
     ui_shell_config_t config;
 } ui_shell_ctx_t;
@@ -104,9 +107,33 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     lv_label_set_text(weather_label, "--°C • --");
     lv_obj_align(weather_label, LV_ALIGN_BOTTOM_MID, 0, -4);
 
+    // Status panel for onboarding/provisioning
+    lv_obj_t *status_box = lv_obj_create(screen);
+    lv_obj_set_size(status_box, 220, 70);
+    lv_obj_align(status_box, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_bg_color(status_box, lv_color_hex(0x243447), 0);
+    lv_obj_set_style_bg_opa(status_box, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(status_box, 8, 0);
+    lv_obj_set_style_border_width(status_box, 0, 0);
+
+    lv_obj_t *status_title = lv_label_create(status_box);
+    lv_obj_set_style_text_font(status_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(status_title, lv_color_white(), 0);
+    lv_label_set_text(status_title, "Connecting to Wi-Fi");
+    lv_obj_align(status_title, LV_ALIGN_TOP_MID, 0, 6);
+
+    lv_obj_t *status_subtitle = lv_label_create(status_box);
+    lv_obj_set_style_text_font(status_subtitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(status_subtitle, lv_color_hex(0xaec0d6), 0);
+    lv_label_set_text(status_subtitle, "Preparing network");
+    lv_obj_align(status_subtitle, LV_ALIGN_BOTTOM_MID, 0, -6);
+
     ctx->time_label = time_label;
     ctx->sub_label = sub_label;
     ctx->weather_label = weather_label;
+    ctx->status_box = status_box;
+    ctx->status_title = status_title;
+    ctx->status_subtitle = status_subtitle;
     ctx->weather_ticks = 300; // force immediate first refresh
 
     lv_timer_create(ui_shell_update_clock, 1000, ctx);
@@ -137,5 +164,20 @@ void ui_shell_update_weather(const char *text)
         return;
     }
     lv_label_set_text(s_ctx.weather_label, text);
+}
+
+void ui_shell_show_onboarding(const char *primary, const char *secondary)
+{
+    if (!s_ctx.status_box) {
+        return;
+    }
+
+    if (primary) {
+        lv_label_set_text(s_ctx.status_title, primary);
+    }
+
+    if (secondary) {
+        lv_label_set_text(s_ctx.status_subtitle, secondary);
+    }
 }
 
