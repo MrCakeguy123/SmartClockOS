@@ -8,7 +8,14 @@ extern "C" {
 #endif
 
 typedef struct {
-    char description[48];
+    double temp_f;       // Current temperature in Fahrenheit
+    double feels_like_f; // Apparent temperature
+    double high_f;       // Today's high
+    double low_f;        // Today's low
+    int weather_code;    // WMO weather code
+    char condition[32];  // Weather description
+    char sunrise[8];     // e.g., "7:15 AM"
+    char sunset[8];      // e.g., "5:42 PM"
 } weather_data_t;
 
 typedef void (*weather_update_cb_t)(const weather_data_t *data, void *ctx);
