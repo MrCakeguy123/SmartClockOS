@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
+#include "version.h"
 
 static const char *TAG = "ui_shell";
 
@@ -14,6 +15,8 @@ typedef struct {
     lv_obj_t *time_label;
     lv_obj_t *sub_label;
     lv_obj_t *weather_label;
+    lv_obj_t *brand_label;
+    lv_obj_t *version_label;
     lv_obj_t *status_box;
     lv_obj_t *status_title;
     lv_obj_t *status_subtitle;
@@ -79,6 +82,8 @@ static void ui_shell_apply_brightness(ui_shell_ctx_t *ctx, ui_brightness_state_t
     lv_obj_set_style_text_opa(ctx->time_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->sub_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->weather_label, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->brand_label, text_opa, 0);
+    lv_obj_set_style_text_opa(ctx->version_label, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->status_title, text_opa, 0);
     lv_obj_set_style_text_opa(ctx->status_subtitle, text_opa, 0);
 }
@@ -200,6 +205,19 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     lv_style_set_bg_grad_dir(&bg_style, LV_GRAD_DIR_VER);
     lv_obj_add_style(screen, &bg_style, 0);
 
+    // Branding
+    lv_obj_t *brand_label = lv_label_create(screen);
+    lv_obj_set_style_text_font(brand_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(brand_label, lv_color_white(), 0);
+    lv_label_set_text(brand_label, "SmartClock OS");
+    lv_obj_align(brand_label, LV_ALIGN_TOP_LEFT, 12, 10);
+
+    lv_obj_t *version_label = lv_label_create(screen);
+    lv_obj_set_style_text_font(version_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(version_label, lv_color_hex(0xaec0d6), 0);
+    lv_label_set_text_fmt(version_label, "Version %s", SMARTCLOCK_OS_VERSION);
+    lv_obj_align_to(version_label, brand_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 2);
+
     // Time label
     lv_obj_t *time_label = lv_label_create(screen);
     lv_obj_set_style_text_font(time_label, &lv_font_montserrat_48, 0);
@@ -263,6 +281,8 @@ static void ui_shell_create_clock_ui(ui_shell_ctx_t *ctx)
     ctx->time_label = time_label;
     ctx->sub_label = sub_label;
     ctx->weather_label = weather_label;
+    ctx->brand_label = brand_label;
+    ctx->version_label = version_label;
     ctx->status_box = status_box;
     ctx->status_title = status_title;
     ctx->status_subtitle = status_subtitle;
