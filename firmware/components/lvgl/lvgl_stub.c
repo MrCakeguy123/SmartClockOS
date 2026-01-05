@@ -79,6 +79,9 @@ void lv_obj_align(lv_obj_t *obj, lv_align_t align, int32_t x_ofs, int32_t y_ofs)
     if (!obj) {
         return;
     }
+    if (align == LV_ALIGN_DEFAULT) {
+        align = LV_ALIGN_CENTER;
+    }
     obj->align = align;
     (void)x_ofs;
     (void)y_ofs;

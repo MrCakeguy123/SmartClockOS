@@ -32,13 +32,28 @@ extern "C" {
 typedef uint8_t lv_opa_t;
 
 typedef enum {
-    LV_ALIGN_CENTER = 0,
-    LV_ALIGN_BOTTOM_RIGHT,
-    LV_ALIGN_BOTTOM_MID,
-    LV_ALIGN_LEFT_MID,
+    LV_ALIGN_DEFAULT = 0,
     LV_ALIGN_TOP_LEFT,
     LV_ALIGN_TOP_MID,
+    LV_ALIGN_TOP_RIGHT,
+    LV_ALIGN_BOTTOM_LEFT,
+    LV_ALIGN_BOTTOM_MID,
+    LV_ALIGN_BOTTOM_RIGHT,
+    LV_ALIGN_LEFT_MID,
+    LV_ALIGN_RIGHT_MID,
+    LV_ALIGN_CENTER,
+    LV_ALIGN_OUT_TOP_LEFT,
+    LV_ALIGN_OUT_TOP_MID,
+    LV_ALIGN_OUT_TOP_RIGHT,
     LV_ALIGN_OUT_BOTTOM_LEFT,
+    LV_ALIGN_OUT_BOTTOM_MID,
+    LV_ALIGN_OUT_BOTTOM_RIGHT,
+    LV_ALIGN_OUT_LEFT_TOP,
+    LV_ALIGN_OUT_LEFT_MID,
+    LV_ALIGN_OUT_LEFT_BOTTOM,
+    LV_ALIGN_OUT_RIGHT_TOP,
+    LV_ALIGN_OUT_RIGHT_MID,
+    LV_ALIGN_OUT_RIGHT_BOTTOM,
 } lv_align_t;
 
 typedef enum {
@@ -121,13 +136,15 @@ typedef struct lv_style_t {
     int initialized;
 } lv_style_t;
 
-typedef void (*lv_timer_cb_t)(struct lv_timer_t *);
+typedef struct lv_timer_t lv_timer_t;
 
-typedef struct lv_timer_t {
+typedef void (*lv_timer_cb_t)(lv_timer_t *);
+
+struct lv_timer_t {
     lv_timer_cb_t cb;
     void *user_data;
     uint32_t period_ms;
-} lv_timer_t;
+};
 
 typedef void (*lv_anim_exec_xcb_t)(void *var, int32_t value);
 
