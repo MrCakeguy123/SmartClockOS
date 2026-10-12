@@ -1,0 +1,12 @@
+# WiFi password and location - never upload
+Secrets.h
+
+# Compiler output
+build/
+
+# Sliced print files (printer-specific, re-slice the STLs instead)
+*.gcode
+
+# Editor folders
+.vs/
+.vscode/

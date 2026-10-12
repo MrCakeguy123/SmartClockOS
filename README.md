@@ -1,100 +1,66 @@
 # SmartClockOS
 
-A beautiful, feature-rich smart clock for ESP32 with real-time weather, automatic brightness control, and Wi-Fi connectivity. Designed for the ESP32-3248S035C 3.5" capacitive-touch display module with smooth LVGL animations and modern UI.
+A wall clock with live weather for the Sunton **ESP32-8048S070** (7" 800x480 touch screen, ESP32-S3). It is an Arduino sketch built on LVGL 9.
 
-![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.x-blue) ![Platform](https://img.shields.io/badge/platform-ESP32-green)
+Current version: **2.8.0**
 
-## ✨ New Features (Latest Update)
+## What it does
 
-### 🌤️ Real Weather Integration
-- **Live weather data** from Open-Meteo API (no API key required!)
-- **Comprehensive info:** Temperature, feels like, high/low, sunrise/sunset
-- **Weather icons** with 20+ conditions (☀ ☁ ☔ ❄ ⚡)
-- **Beautiful weather card** UI at bottom of display
-- **5-minute auto-updates** with offline fallback
+- **Clock and weather on one screen.** Large time and date, current temperature and conditions, and a strip of the next 24 hours.
+- **Animated sky.** The background and its sun, moon, stars, clouds, rain, snow, fog and lightning follow the real weather. Clouds drift faster when it is windy.
+- **Forecast page.** Swipe to see sunrise and sunset, a 24-hour temperature and rain chart, and a 7-day forecast.
+- **Indoor readings** from an optional BME280 sensor.
+- **Night mode.** Dims the screen between the hours you choose.
+- **Settings on the touch screen:** brightness, night mode, and units (°F/°C, mph/km/h, in/mm).
+- **Web page on your home network:** change settings and WiFi, see diagnostics and logs, and upload new firmware. `/api/screenshot` returns a picture of the display.
+- **Optional cooling fan** control. It does nothing if no fan is wired.
 
-### ⚡ Pre-configured for Your City
-- Latitude: 40.7128, Longitude: -74.0060
-- Eastern Time Zone with automatic DST
-- Ready to flash and use immediately!
+Weather comes from [Open-Meteo](https://open-meteo.com/), which needs no account or key. It refreshes every 10 minutes. Time comes from the internet (NTP).
 
-## Highlights
-- **ESP-IDF v5.x** with LVGL 8.x for polished, animated clock face
-- **Wi-Fi SNTP sync** for accurate timekeeping
-- **Real weather API** integration with HTTPS
-- **Smart power management** (auto-dim, sleep modes)
-- **Easy configuration** via simple header file
-- **OTA-ready** architecture
+## Hardware
 
-## 📚 Documentation
+- Sunton ESP32-8048S070 (ESP32-S3, 8 MB PSRAM, GT911 touch)
+- Optional: BME280 sensor. Wiring is in [hardware-docs/BME280_wiring.md](hardware-docs/BME280_wiring.md).
+- Optional: 30 mm 5 V fan with a MOSFET switch. See [case/FAN.md](case/FAN.md).
 
-**New users start here:**
+Pin numbers and board notes are in [hardware-docs](hardware-docs/README.md).
 
-| Document | Description |
-|----------|-------------|
-| **[FLASH_QUICK_START.md](FLASH_QUICK_START.md)** | ⚡ Quick 3-step flash guide |
-| **[SETUP_GUIDE.md](SETUP_GUIDE.md)** | 📖 Complete setup instructions |
-| **[PRE_FLIGHT_CHECKLIST.md](PRE_FLIGHT_CHECKLIST.md)** | ✅ Get ready before ESP32 arrives |
-| **[PORTING_GUIDE.md](PORTING_GUIDE.md)** | 🔧 Technical feature documentation |
+## Build and flash
 
-## 🚀 Quick Start (3 Steps)
+You need the Arduino IDE or `arduino-cli`, with the **esp32** board package (3.3.x) and these libraries:
 
-### 1. Install ESP-IDF
-Run `install_esp_idf.bat` or download from: https://dl.espressif.com/dl/esp-idf/
+| Library | Version used |
+| --- | --- |
+| lvgl | 9.5.0 |
+| GFX Library for Arduino | 1.6.7 |
+| TAMC_GT911 | 1.0.2 |
+| ArduinoJson | 7.4.3 |
+| Adafruit BME280 Library | 2.3.0 |
 
-### 2. Build Firmware
-```cmd
-cd firmware
-idf.py build
-```
+Steps:
 
-### 3. Flash ESP32 (when it arrives)
-```cmd
-idf.py -p auto flash monitor
-```
+1. Download this repo into a folder named `SmartClockOS`.
+2. Copy `extras/lv_conf.h` into your Arduino `libraries` folder, next to the `lvgl` folder. The clock needs these LVGL settings.
+3. Copy `Secrets.example.h` to `Secrets.h` and fill in your WiFi name, WiFi password and location.
+4. Set your time zone in `Config.h` (`TIMEZONE`). It is set to US Eastern.
+5. Build and upload. In the Arduino IDE choose board **ESP32S3 Dev Module**, PSRAM **OPI PSRAM**, and partition scheme **No FS 4MB (2MB APP x2)**. With `arduino-cli` those settings come from `sketch.yaml`:
 
-**See [FLASH_QUICK_START.md](FLASH_QUICK_START.md) for detailed instructions.**
+   ```bash
+   arduino-cli compile .
+   ```
 
-## ⚙️ Configuration
+   ```bash
+   arduino-cli upload -p YOUR_PORT .
+   ```
 
-All settings in `firmware/main/config.h`:
+After the first upload you can update over WiFi: open the clock's web page and use **Firmware Update**.
 
-```c
-// Location (pre-set for Your City)
-#define WEATHER_LAT 40.7128
-#define WEATHER_LON -74.0060
-#define LOCATION_NAME "Your City"
+## The web page
 
-// Timezone (Eastern Time)
-#define TIMEZONE_STRING "EST5EDT,M3.2.0,M11.1.0"
+Open the clock's address in a browser. The address is shown at the bottom of the clock's settings screen.
 
-// Power management
-#define AUTO_DIM_TIMEOUT_SEC 30
-#define AUTO_BLANK_TIMEOUT_SEC 60
-```
+The web page has no login. Anyone on the same network can change settings or upload firmware, so only use it on a network you trust.
 
-## 🏗️ Repository Layout
+## Case
 
-```
-SmartClockOS/
-├── firmware/main/
-│   ├── main.c              # Application entry point
-│   ├── ui_shell.c          # LVGL UI with weather card
-│   ├── weather_service.c   # Open-Meteo API integration
-│   ├── network_manager.c   # Wi-Fi management
-│   ├── config.h            # ← Your configuration here
-│   └── ...
-├── SETUP_GUIDE.md          # Full setup guide
-├── FLASH_QUICK_START.md    # Quick flash guide
-└── README.md               # This file
-```
-
-## 🎨 UI Features
-
-- **Large time display** with smooth scale animation
-- **Weather card** with icon, temperature, high/low, feels like
-- **Sunrise/sunset times** displayed on right side
-- **Day and location** shown below time
-- **Gradient background** with modern styling
-- **Auto-brightness** with configurable dimming
-- **Settings panel** for auto-dim and deep sleep toggles
+[case](case/README.md) has a 3D-printable wall case: the OpenSCAD source, STL files, renders and assembly notes.
