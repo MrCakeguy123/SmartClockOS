@@ -4,6 +4,8 @@ A wall clock with live weather for the Sunton **ESP32-8048S070** (7" 800x480 tou
 
 Current version: **2.8.0**
 
+![The clock's home screen](docs/home-screen.png)
+
 ## What it does
 
 - **Clock and weather on one screen.** Large time and date, current temperature and conditions, and a strip of the next 24 hours.
@@ -13,7 +15,7 @@ Current version: **2.8.0**
 - **Night mode.** Dims the screen between the hours you choose.
 - **Settings on the touch screen:** brightness, night mode, and units (°F/°C, mph/km/h, in/mm).
 - **Web page on your home network:** change settings and WiFi, see diagnostics and logs, and upload new firmware. `/api/screenshot` returns a picture of the display.
-- **Optional cooling fan** control. It does nothing if no fan is wired.
+- **Optional cooling fan** control. It does nothing if no fan is wired. This part has not been tested with a real fan yet.
 
 Weather comes from [Open-Meteo](https://open-meteo.com/), which needs no account or key. It refreshes every 10 minutes. Time comes from the internet (NTP).
 
